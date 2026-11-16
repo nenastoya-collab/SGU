@@ -1,7 +1,8 @@
-// Дедлайны: все НЕСДЕЛАННЫЕ пункты с датами по хронологии.
+// Дедлайны: все НЕСДЕЛАННЫЕ пункты с датами по хронологии,
+// а ниже — раздел «Без даты»: пункты, которым дату ещё не назначили.
 // Сделанные здесь не показываем — они остаются видны внутри предмета.
-import { CalendarDays } from "lucide-react";
-import { useAppData, datedEntries } from "@/lib/store";
+import { CalendarDays, CalendarPlus } from "lucide-react";
+import { useAppData, datedEntries, updateItem } from "@/lib/store";
 import { daysUntil, relLabel, formatShort } from "@/lib/dates";
 import { DateBadge, SubjectDot, Empty } from "@/components/Bits";
 
@@ -17,6 +18,13 @@ export function Deadlines({ onOpenSubject }: { onOpenSubject: (id: string) => vo
     else groups.push({ date: e.item.date!, entries: [e] });
   });
 
+  // Пункты без даты: не теряются — каждый может поставить свою дату календариком
+  const undated = d.subjects.flatMap((s) =>
+    s.items
+      .filter((it) => !it.done && !it.date)
+      .map((it) => ({ subjectId: s.id, subjectName: s.name, item: it }))
+  );
+
   return (
     <div className="screen-enter">
       <header className="px-5 pt-6 pb-2" style={{ paddingTop: "calc(1.5rem + env(safe-area-inset-top))" }}>
@@ -29,47 +37,98 @@ export function Deadlines({ onOpenSubject }: { onOpenSubject: (id: string) => vo
       </header>
 
       <div className="px-4 mt-4 flex flex-col gap-5">
-        {groups.length === 0 ? (
+        {groups.length === 0 && undated.length === 0 ? (
           <Empty
             icon={<CalendarDays size={44} strokeWidth={1.5} />}
             title="Дат пока нет"
             hint="Добавьте дату к любому пункту — и она появится здесь"
           />
         ) : (
-          groups.map((g) => {
-            const n = daysUntil(g.date);
-            const urgent = n < 0 ? "over" : n <= 7 ? "soon" : "ok";
-            return (
-              <section key={g.date} aria-label={formatShort(g.date)}>
+          <>
+            {groups.map((g) => {
+              const n = daysUntil(g.date);
+              const urgent = n < 0 ? "over" : n <= 7 ? "soon" : "ok";
+              return (
+                <section key={g.date} aria-label={formatShort(g.date)}>
+                  <div className="px-1 mb-2 flex items-center gap-2.5">
+                    <h2 className="text-[15px] font-bold tnum" style={{ color: "var(--ink)" }}>
+                      {formatShort(g.date)}
+                    </h2>
+                    <DateBadge label={relLabel(g.date)} urgent={urgent} />
+                  </div>
+                  <div className="card">
+                    {g.entries.map((e) => (
+                      <button
+                        key={e.item.id}
+                        type="button"
+                        onClick={() => onOpenSubject(e.subjectId)}
+                        className="hairline-b flex w-full items-center gap-3 px-4 py-3.5 text-left cursor-pointer min-h-[56px]"
+                      >
+                        <SubjectDot name={e.subjectName} />
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-[16px] leading-snug" style={{ color: "var(--ink)" }}>
+                            {e.item.title}
+                          </span>
+                          <span className="block text-[13px]" style={{ color: "var(--ink-3)" }}>
+                            {e.subjectName}
+                          </span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
+
+            {undated.length > 0 && (
+              <section aria-label="Без даты">
                 <div className="px-1 mb-2 flex items-center gap-2.5">
-                  <h2 className="text-[15px] font-bold tnum" style={{ color: "var(--ink)" }}>
-                    {formatShort(g.date)}
+                  <h2 className="text-[15px] font-bold" style={{ color: "var(--ink)" }}>
+                    Без даты
                   </h2>
-                  <DateBadge label={relLabel(g.date)} urgent={urgent} />
+                  <span className="text-[13px]" style={{ color: "var(--ink-3)" }}>
+                    поставьте свою дату календариком
+                  </span>
                 </div>
                 <div className="card">
-                  {g.entries.map((e) => (
-                    <button
-                      key={e.item.id}
-                      type="button"
-                      onClick={() => onOpenSubject(e.subjectId)}
-                      className="hairline-b flex w-full items-center gap-3 px-4 py-3.5 text-left cursor-pointer min-h-[56px]"
-                    >
-                      <SubjectDot name={e.subjectName} />
-                      <span className="flex-1 min-w-0">
-                        <span className="block text-[16px] leading-snug" style={{ color: "var(--ink)" }}>
-                          {e.item.title}
+                  {undated.map((e) => (
+                    <div key={e.item.id} className="hairline-b flex w-full items-center gap-3 px-4 py-3.5 min-h-[56px]">
+                      <button
+                        type="button"
+                        onClick={() => onOpenSubject(e.subjectId)}
+                        className="flex flex-1 min-w-0 items-center gap-3 text-left cursor-pointer"
+                      >
+                        <SubjectDot name={e.subjectName} />
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-[16px] leading-snug" style={{ color: "var(--ink)" }}>
+                            {e.item.title}
+                          </span>
+                          <span className="block text-[13px]" style={{ color: "var(--ink-3)" }}>
+                            {e.subjectName}
+                          </span>
                         </span>
-                        <span className="block text-[13px]" style={{ color: "var(--ink-3)" }}>
-                          {e.subjectName}
-                        </span>
-                      </span>
-                    </button>
+                      </button>
+                      <label
+                        aria-label={`Поставить дату: ${e.item.title}`}
+                        className="relative flex w-[44px] h-[44px] shrink-0 items-center justify-center cursor-pointer"
+                        style={{ color: "var(--accent)" }}
+                      >
+                        <CalendarPlus size={20} />
+                        <input
+                          type="date"
+                          className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                          onChange={(ev) => {
+                            const v = ev.target.value;
+                            if (v) updateItem(e.subjectId, e.item.id, { date: v });
+                          }}
+                        />
+                      </label>
+                    </div>
                   ))}
                 </div>
               </section>
-            );
-          })
+            )}
+          </>
         )}
       </div>
     </div>

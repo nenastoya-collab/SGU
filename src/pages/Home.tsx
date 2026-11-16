@@ -47,7 +47,7 @@ export function Home({ onOpenSubject }: { onOpenSubject: (id: string) => void })
           {formatLong(todayISO())}
         </p>
         <h1 className="mt-1 text-[32px] font-bold leading-tight tracking-tight" style={{ color: "var(--ink)" }}>
-          {week.length === 0 ? "Неделя свободна" : (
+          {week.length === 0 ? "Дат на этой неделе нет" : (
             <>
               На этой неделе: <span className="tnum">{week.length}</span>{" "}
               {plural(week.length, "дело", "дела", "дел")}
@@ -60,7 +60,7 @@ export function Home({ onOpenSubject }: { onOpenSubject: (id: string) => void })
           </p>
         ) : week.length === 0 && t.left > 0 ? (
           <p className="mt-1 text-[15px]" style={{ color: "var(--ink-3)" }}>
-            срочных дат нет — можно идти в своём темпе
+            но есть дела без дат — загляните в Дедлайны
           </p>
         ) : null}
       </header>

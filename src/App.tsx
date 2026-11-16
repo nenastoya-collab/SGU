@@ -25,7 +25,7 @@ export default function App() {
       <div className="mx-auto max-w-md min-h-dvh relative">
         <main className="pb-40">
           {tab === "home" && <Home onOpenSubject={openSubject} />}
-          {tab === "schedule" && <Schedule />}
+          {tab === "schedule" && <Schedule onOpenSubject={openSubject} />}
           {tab === "subjects" && <Subjects onOpenSubject={openSubject} />}
           {tab === "deadlines" && <Deadlines onOpenSubject={openSubject} />}
         </main>

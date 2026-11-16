@@ -10,7 +10,7 @@ import type { ScheduleEntry } from "@/types";
 const DAY_NAMES = ["", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
 export const DAY_SHORT = ["", "пн", "вт", "ср", "чт", "пт", "сб"];
 
-export function Schedule() {
+export function Schedule({ onOpenSubject }: { onOpenSubject: (id: string) => void }) {
   const d = useAppData();
   const [weekOffset, setWeekOffset] = useState(0);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -112,24 +112,32 @@ export function Schedule() {
               <div className="card px-4">
                 {day.classes.map((c) => {
                   const entry = c.entryId ? d.schedule.find((e) => e.id === c.entryId) : undefined;
+                  const subject = d.subjects.find((s) => s.name === c.subject);
                   return (
                     <div key={c.key} className="hairline-b flex items-center gap-3 py-3 min-h-[56px]">
-                      <span className="tnum text-[13.5px] font-semibold w-[76px] shrink-0" style={{ color: "var(--ink-2)" }}>
-                        {c.start}–{c.end}
-                      </span>
-                      <SubjectDot name={c.subject} />
-                      <span className="flex-1 min-w-0">
-                        <span className="block text-[15.5px] font-medium leading-snug" style={{ color: "var(--ink)" }}>
-                          {c.subject}
+                      <button
+                        type="button"
+                        aria-label={subject ? `Открыть предмет: ${c.subject}` : c.subject}
+                        className="flex flex-1 min-w-0 items-center gap-3 text-left cursor-pointer"
+                        onClick={() => subject && onOpenSubject(subject.id)}
+                      >
+                        <span className="tnum text-[13.5px] font-semibold w-[76px] shrink-0" style={{ color: "var(--ink-2)" }}>
+                          {c.start}–{c.end}
                         </span>
-                        <span className="block text-[12.5px] truncate" style={{ color: "var(--ink-3)" }}>
-                          {[c.kind, c.room, c.teacher].filter(Boolean).join(" · ")}
-                          {c.movedFrom && " · перенесена"}
-                          {entry && rangeLabel(entry) && (
-                            <span className="tnum"> · {rangeLabel(entry)}</span>
-                          )}
+                        <SubjectDot name={c.subject} />
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-[15.5px] font-medium leading-snug" style={{ color: "var(--ink)" }}>
+                            {c.subject}
+                          </span>
+                          <span className="block text-[12.5px] truncate" style={{ color: "var(--ink-3)" }}>
+                            {[c.kind, c.room, c.teacher].filter(Boolean).join(" · ")}
+                            {c.movedFrom && " · перенесена"}
+                            {entry && rangeLabel(entry) && (
+                              <span className="tnum"> · {rangeLabel(entry)}</span>
+                            )}
+                          </span>
                         </span>
-                      </span>
+                      </button>
                       {entry && (
                         <button
                           type="button"
