@@ -218,10 +218,9 @@ export function seedData(): AppData {
         id: id(),
         name: "Анатомия",
         teacher: "Мельников Евгений Юрьевич",
-        notes: "Экзамен 16 января — готовить все темы из программы ниже.",
+        notes: "Экзамен 16 января.",
         items: [
           { id: id(), title: "Экзамен", date: "2027-01-16", done: false },
-          ...ANATOMY_TOPICS.map((t) => ({ id: id(), title: t.title, details: t.details, done: t.done })),
         ],
       },
     ],

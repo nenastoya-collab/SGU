@@ -1,7 +1,7 @@
 // Хранилище: все данные живут на устройстве (localStorage).
 import { useSyncExternalStore } from "react";
 import type { AppData, ScheduleEntry, Subject, SubjectItem } from "@/types";
-import { seedData, seedSchedule, ANATOMY_TOPICS, SCHED_VERSION } from "./seed";
+import { seedData, seedSchedule, SCHED_VERSION } from "./seed";
 import { withNewStart } from "./schedule";
 
 const KEY = "study-helper-v2";
@@ -72,15 +72,8 @@ function migrate(d: AppData): AppData {
     d.schedVersion = SCHED_VERSION;
     changed = true;
   }
-  // Темы по анатомии — добавляем тем, у кого предмет уже был создан раньше
-  const anatomy = d.subjects.find((s) => s.name.toLowerCase().includes("анатом"));
-  if (anatomy && !anatomy.items.some((i) => i.title.includes("Нейроглия"))) {
-    ANATOMY_TOPICS.forEach((t) => {
-      anatomy.items.push({ id: uid(), title: t.title, details: t.details, done: t.done });
-    });
-    if (!anatomy.notes) anatomy.notes = "Экзамен 16 января — готовить все темы из программы ниже.";
-    changed = true;
-  }
+  // Темы по анатомии больше не догружаем: список тем убрали из заготовки.
+  // У тех, у кого темы уже есть (у Яны), — всё остаётся как было, не трогаем.
   // Новые предметы из заготовки — добавляем тем, у кого их ещё нет.
   // Существующие предметы не трогаем: там могут быть отметки и свои пункты.
   const seed = seedData();

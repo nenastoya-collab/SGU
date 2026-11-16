@@ -1,8 +1,8 @@
 // Дедлайны: все НЕСДЕЛАННЫЕ пункты с датами по хронологии,
 // а ниже — раздел «Без даты»: пункты, которым дату ещё не назначили.
 // Сделанные здесь не показываем — они остаются видны внутри предмета.
-import { CalendarDays, CalendarPlus } from "lucide-react";
-import { useAppData, datedEntries, updateItem } from "@/lib/store";
+import { CalendarDays } from "lucide-react";
+import { useAppData, datedEntries } from "@/lib/store";
 import { daysUntil, relLabel, formatShort } from "@/lib/dates";
 import { DateBadge, SubjectDot, Empty } from "@/components/Bits";
 
@@ -18,7 +18,7 @@ export function Deadlines({ onOpenSubject }: { onOpenSubject: (id: string) => vo
     else groups.push({ date: e.item.date!, entries: [e] });
   });
 
-  // Пункты без даты: не теряются — каждый может поставить свою дату календариком
+  // Пункты без даты: не теряются. Дату ставим внутри пункта (карандашик), как обычно.
   const undated = d.subjects.flatMap((s) =>
     s.items
       .filter((it) => !it.done && !it.date)
@@ -86,44 +86,25 @@ export function Deadlines({ onOpenSubject }: { onOpenSubject: (id: string) => vo
                   <h2 className="text-[15px] font-bold" style={{ color: "var(--ink)" }}>
                     Без даты
                   </h2>
-                  <span className="text-[13px]" style={{ color: "var(--ink-3)" }}>
-                    поставьте свою дату календариком
-                  </span>
                 </div>
                 <div className="card">
                   {undated.map((e) => (
-                    <div key={e.item.id} className="hairline-b flex w-full items-center gap-3 px-4 py-3.5 min-h-[56px]">
-                      <button
-                        type="button"
-                        onClick={() => onOpenSubject(e.subjectId)}
-                        className="flex flex-1 min-w-0 items-center gap-3 text-left cursor-pointer"
-                      >
-                        <SubjectDot name={e.subjectName} />
-                        <span className="flex-1 min-w-0">
-                          <span className="block text-[16px] leading-snug" style={{ color: "var(--ink)" }}>
-                            {e.item.title}
-                          </span>
-                          <span className="block text-[13px]" style={{ color: "var(--ink-3)" }}>
-                            {e.subjectName}
-                          </span>
+                    <button
+                      key={e.item.id}
+                      type="button"
+                      onClick={() => onOpenSubject(e.subjectId)}
+                      className="hairline-b flex w-full items-center gap-3 px-4 py-3.5 text-left cursor-pointer min-h-[56px]"
+                    >
+                      <SubjectDot name={e.subjectName} />
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-[16px] leading-snug" style={{ color: "var(--ink)" }}>
+                          {e.item.title}
                         </span>
-                      </button>
-                      <label
-                        aria-label={`Поставить дату: ${e.item.title}`}
-                        className="relative flex w-[44px] h-[44px] shrink-0 items-center justify-center cursor-pointer"
-                        style={{ color: "var(--accent)" }}
-                      >
-                        <CalendarPlus size={20} />
-                        <input
-                          type="date"
-                          className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                          onChange={(ev) => {
-                            const v = ev.target.value;
-                            if (v) updateItem(e.subjectId, e.item.id, { date: v });
-                          }}
-                        />
-                      </label>
-                    </div>
+                        <span className="block text-[13px]" style={{ color: "var(--ink-3)" }}>
+                          {e.subjectName}
+                        </span>
+                      </span>
+                    </button>
                   ))}
                 </div>
               </section>
