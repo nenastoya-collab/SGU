@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Учебный помощник</title>
+    <meta name="description" content="Все предметы, задания и дедлайны — в одном месте" />
+    <meta name="theme-color" content="#669aaa" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="/icons/icon-192.png" />
+    <!-- iOS: установка на экран «Домой» -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Учёба" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Просим SDK платформы не рисовать служебный значок-водяной знак.
+      // Скрипт платформы вставляется с defer и выполняется после этого блока,
+      // поэтому успеваем выставить флаг заранее. Если тег появится позже — наблюдатель.
+      (function () {
+        var flip = function () {
+          var s = document.querySelector('script[src*="sdk-seed"]');
+          if (s) s.setAttribute("data-kimi-disable-watermark", "true");
+          return !!s;
+        };
+        if (!flip()) {
+          var obs = new MutationObserver(function () {
+            if (flip()) obs.disconnect();
+          });
+          obs.observe(document.documentElement, { childList: true, subtree: true });
+          setTimeout(function () { obs.disconnect(); }, 15000);
+        }
+      })();
+
+      if ("serviceWorker" in navigator) {
+        // Был ли страница уже под управлением SW при загрузке:
+        // если да, а потом управление сменилось — пришло обновление, перезагружаемся.
+        const hadController = !!navigator.serviceWorker.controller;
+        let reloading = false;
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          if (!hadController || reloading) return;
+          reloading = true;
+          window.location.reload();
+        });
+
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("/sw.js", { updateViaCache: "none" }) // не кэшировать сам загрузчик
+            .then((reg) => {
+              reg.update(); // проверить обновление сразу при открытии
+              // …и каждый раз, когда пользователь возвращается в приложение
+              document.addEventListener("visibilitychange", () => {
+                if (document.visibilityState === "visible") reg.update();
+              });
+            })
+            .catch(() => {});
+        });
+      }
+    </script>
+  </body>
+</html>
