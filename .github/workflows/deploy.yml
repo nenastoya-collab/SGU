@@ -24,6 +24,25 @@ jobs:
           node-version: 20
       - run: npm ci
       - run: npm run build
+      # Защита от случайных поломок: не даём опубликовать явно битую сборку.
+      # 1) В папке public/ не должно лежать посторонних файлов проекта
+      #    (если туда случайно скопировать весь проект — сборка ломается).
+      # 2) Главный JS-файл приложения должен быть большим (>50 КБ).
+      #    Если он весит меньше килобайта — приложение не собралось.
+      - name: Проверка сборки перед публикацией
+        run: |
+          if [ -f public/index.html ] || [ -d public/src ]; then
+            echo "ОШИБКА: в папку public попали файлы проекта (index.html/src)."
+            echo "В public должны быть только: icons, manifest.webmanifest, sw.js."
+            exit 1
+          fi
+          SIZE=$(ls -S dist/assets/index-*.js | head -1 | xargs stat -c%s)
+          echo "Размер главного файла приложения: $SIZE байт"
+          if [ "$SIZE" -lt 50000 ]; then
+            echo "ОШИБКА: приложение собралось подозрительно маленьким — публикация отменена."
+            exit 1
+          fi
+          echo "Проверка пройдена."
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

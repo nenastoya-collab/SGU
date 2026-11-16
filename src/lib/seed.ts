@@ -44,7 +44,7 @@ export const ANATOMY_TOPICS: { title: string; details?: string; done: boolean }[
 
 // --- Расписание: вечерняя форма, 111 группа (по PDF от 11.09.2026) ---
 // Версия сетки: меняется вместе с содержимым seedSchedule() — запускает миграцию у пользователей.
-export const SCHED_VERSION = 5;
+export const SCHED_VERSION = 6;
 
 export function seedSchedule(): ScheduleEntry[] {
   let k = 0;
@@ -162,6 +162,13 @@ export function seedData(): AppData {
           { id: id(), title: "Получить логин и пароль для компьютерного класса", done: false },
           { id: id(), title: "Барс — загрузить фото", done: false },
         ],
+      },
+      {
+        id: id(),
+        name: "История культуры",
+        teacher: "Зеленкина Алёна Сергеевна",
+        notes: "",
+        items: [],
       },
       {
         id: id(),

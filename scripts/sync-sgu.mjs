@@ -36,7 +36,7 @@ const TEACHER_MAP = {
   "Смирнова А. Ю.": "Смирнова Анна Юрьевна",
   "Шрамкова О. В.": "Шрамкова Оксана Владимировна",
   "Каткова М. В.": "Каткова Маргарита Владимировна",
-  "Зеленкина А. С.": "Зеленкина А. С.",
+  "Зеленкина А. С.": "Зеленкина Алёна Сергеевна",
   "Захарова Е. Н.": "Захарова Е. Н.",
   "Ларионова Е. В.": "Ларионова Е. В.",
 };
@@ -177,7 +177,43 @@ if (!anchor.test(seed)) {
   process.exit(1);
 }
 seed = seed.replace(anchor, `\n    // Добавлено автосинхронизацией с сайта СГУ (${new Date().toISOString().slice(0, 10)})\n${lines.join("\n")}$1`);
+
+// Предметы, по которым появились пары, но которых ещё нет в списке предметов.
+// Пары и предмет всегда должны существовать вместе — иначе пара висит в
+// расписании, а карточки предмета (с пунктами и пометками) у человека нет.
+const existingSubjects = new Set(
+  [...seed.matchAll(/name: "([^"]+)"/g)].map((m) => m[1])
+);
+const freshSubjects = [...new Set(fresh.map((p) => p.subject))].filter(
+  (s) => !existingSubjects.has(s)
+);
+if (freshSubjects.length > 0) {
+  const subjectBlocks = freshSubjects.map((name) => {
+    const p = fresh.find((x) => x.subject === name);
+    return `      {\n        id: id(),\n        name: "${name}",\n        teacher: "${p?.teacher ?? ""}",\n        notes: "",\n        items: [],\n      },`;
+  });
+  const subjAnchor = /(\n    \],\n  \};\n\})/;
+  if (!subjAnchor.test(seed)) {
+    console.error("Не нашёл место вставки предметов в seed.ts — прерываю.");
+    process.exit(1);
+  }
+  seed = seed.replace(subjAnchor, `\n${subjectBlocks.join("\n")}$1`);
+  console.log(`Добавлено новых предметов: ${freshSubjects.join(", ")}`);
+}
+
+// Если в расписании что-то изменилось — обязательно поднимаем SCHED_VERSION.
+// Иначе новые пары увидят только те, кто установит приложение с нуля,
+// а у уже пользующихся людей они не появятся.
+if (!/export const SCHED_VERSION = (\d+);/.test(seed)) {
+  console.error("Не нашёл SCHED_VERSION в seed.ts — прерываю.");
+  process.exit(1);
+}
+seed = seed.replace(
+  /export const SCHED_VERSION = (\d+);/,
+  (_, n) => `export const SCHED_VERSION = ${Number(n) + 1};`
+);
 writeFileSync(seedPath, seed);
+console.log("SCHED_VERSION поднят — новые пары доедут до всех, кто уже пользуется приложением.");
 
 console.log(`Добавлено новых пар: ${fresh.length}`);
 for (const p of fresh) console.log(`  + ${p.subject} | день ${p.day} | ${p.start} | ${p.teacher} | ${p.weekType}`);
