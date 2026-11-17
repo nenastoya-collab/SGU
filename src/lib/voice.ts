@@ -104,12 +104,18 @@ function weekdayNameForParse(wd: number): string {
   return ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"][wd];
 }
 
+/** Текущее время в минутах от полуночи (локальное время телефона). */
+function nowMinutes(): number {
+  const n = new Date();
+  return n.getHours() * 60 + n.getMinutes();
+}
+
 interface DateHit {
   iso?: string;
   phrase: string; // что вырезать из текста
   note?: string;
   weekOffset?: 0 | 1; // «на этой/следующей неделе» без дня — дату возьмём из расписания
-  classRef?: "nearest" | "skip"; // «ближайшая/следующая пара» (одно и то же) / «через пару» — после ближайшей
+  classRef?: "nearest" | "skip" | "today"; // «ближайшая/следующая пара» / «через пару» / «сегодняшняя пара»
 }
 
 function extractDate(text: string): DateHit | null {
@@ -117,9 +123,13 @@ function extractDate(text: string): DateHit | null {
   // «Ближайшая» и «следующая» — одно и то же (ближайшая будущая); «через пару» — через одну.
   // ВАЖНО: срабатывает только с предлогом («на/к пару…») или местоимением («ближайшую пару…») —
   // просто слово «пару» в «отмени пару Вороновой на субботу» датой НЕ является.
+  // «на сегодняшнюю пару по истории» — именно сегодняшняя, даже если она идёт или прошла
+  const todayClassM = text.match(/(?:на|к|ко)\s+сегодняшн(?:юю|ей|яя)\s+пар[аеуы](?=\s|$)/);
+  if (todayClassM) return { classRef: "today", phrase: todayClassM[0] };
   // А «через пару дней/недель» — это про время, не про пары.
+  // «след пару» = короткое «следующую пару».
   const classM = text.match(
-    /(?:через\s+пар[аеуы](?!\s*(?:дней|дня|недел|месяц|год|лет))|(?:на|к|ко)\s+(?:ближайш(?:ая|ую|ей)|следующ(?:ая|ую|ей))\s+пар[аеуы]|(?:на|к|ко)\s+пар[аеуы]|ближайш(?:ая|ую|ей)\s+пар[аеуы]|следующ(?:ая|ую|ей)\s+пар[аеуы])(?=\s|$)/
+    /(?:через\s+пар[аеуы](?!\s*(?:дней|дня|недел|месяц|год|лет))|(?:на|к|ко)\s+(?:ближайш(?:ая|ую|ей)|следующ(?:ая|ую|ей))\s+пар[аеуы]|(?:на|к|ко)\s+пар[аеуы]|ближайш(?:ая|ую|ей)\s+пар[аеуы]|следующ(?:ая|ую|ей)\s+пар[аеуы]|(?:на|к|ко)\s+след\.?\s*пар[аеуы]|след\.?\s*пар[аеуы])(?=\s|$)/
   );
   if (classM) {
     const kind = /^через/.test(classM[0]) ? "skip" : "nearest";
@@ -407,8 +417,10 @@ export function parseVoice(raw: string, d: AppData): VoiceResult {
   if (isCancel) {
     let iso: string | undefined = date?.iso;
     // «отмени ближайшую пару по истории» → ближайшая пара предмета
+    // («отмени сегодняшнюю пару» — берём сегодняшнюю, даже если она идёт или прошла)
     if (!iso && date?.classRef && subject) {
-      const first = findNextClass(d, subject.name, todayISO());
+      const nowMin = date.classRef === "today" ? undefined : nowMinutes();
+      const first = findNextClass(d, subject.name, todayISO(), 21, nowMin);
       const hit = date.classRef === "skip" && first ? findNextClass(d, subject.name, addDaysISO(first.date, 1)) : first;
       if (hit) iso = hit.date;
     }
@@ -424,14 +436,22 @@ export function parseVoice(raw: string, d: AppData): VoiceResult {
   if (date?.iso) {
     iso = date.iso;
   } else if (date?.classRef) {
-    // «доклад на ближайшую пару по истории России» → дата пары из расписания
+    // «доклад на ближайшую пару по истории России» → дата пары из расписания.
+    // Пара, которая сегодня уже идёт или закончилась, — не «следующая»: берём будущую.
+    // «Сегодняшняя пара» — наоборот, именно сегодняшняя, в любом её состоянии.
     if (!subject)
       return { type: "unknown", reason: "Не поняла, к какой паре готовиться. Назовите предмет, например: «доклад на ближайшую пару по истории России»" };
-    const first = findNextClass(d, subject.name, todayISO());
+    const nowMin = date.classRef === "today" ? undefined : nowMinutes();
+    const first = findNextClass(d, subject.name, todayISO(), 21, nowMin);
     const hit = date.classRef === "skip" && first ? findNextClass(d, subject.name, addDaysISO(first.date, 1)) : first;
     if (hit) {
       iso = hit.date;
-      dateNote = date.classRef === "skip" ? `через пару: ${formatShort(hit.date)}` : `ближайшая пара: ${formatShort(hit.date)}`;
+      dateNote =
+        date.classRef === "skip"
+          ? `через пару: ${formatShort(hit.date)}`
+          : date.classRef === "today"
+            ? `сегодняшняя пара: ${formatShort(hit.date)}`
+            : `ближайшая пара: ${formatShort(hit.date)}`;
     } else {
       dateNote = "пары по этому предмету в ближайшие 3 недели не вижу — поставьте дату вручную";
     }
@@ -460,7 +480,7 @@ export function parseVoice(raw: string, d: AppData): VoiceResult {
 /** Подсказки-примеры для листа голосового ввода. */
 export const VOICE_EXAMPLES = [
   "Доклад на ближайшую пару по истории России",
-  "Конспект к следующей паре по анатомии",
+  "Конспект на след пару по анатомии",
   "Перенеси пару Вороновой на 2 часа дня",
   "Перенеси пару по истории культуры на следующую пятницу",
   "Отмени пару Вороновой на субботу",

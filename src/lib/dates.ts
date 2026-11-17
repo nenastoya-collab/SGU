@@ -119,6 +119,20 @@ export function parseRuDate(input: string): string | null {
     return addDays(today, diff);
   }
 
+  // Голое число «25» → ближайшее 25-е (этого или следующего месяца)
+  const bare = s.match(/^(\d{1,2})$/);
+  if (bare) {
+    const day = Number(bare[1]);
+    if (day < 1 || day > 31) return null;
+    let d = new Date(now.getFullYear(), now.getMonth(), day);
+    if (d.getMonth() !== now.getMonth()) return null; // нет такого дня в этом месяце
+    if (d.getTime() < fromISO(today).getTime()) {
+      d = new Date(now.getFullYear(), now.getMonth() + 1, day);
+      if (d.getDate() !== day) return null;
+    }
+    return toISO(d);
+  }
+
   // 20.11 / 20.11.2026 / 20/11
   const numeric = s.match(/^(\d{1,2})[./\s](\d{1,2})(?:[./\s](\d{2,4}))?$/);
   if (numeric) {

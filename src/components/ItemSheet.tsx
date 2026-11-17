@@ -1,10 +1,11 @@
 // Лист добавления / редактирования пункта (задание, доклад, экзамен…).
 // Долгое нажатие бэкспейса подключается централизованно в Sheet (Bits.tsx).
 import { useEffect, useMemo, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2, CalendarDays } from "lucide-react";
 import { Sheet } from "./Bits";
 import { addItem, updateItem, deleteItem, useAppData } from "@/lib/store";
 import { parseRuDate, formatShort, todayISO } from "@/lib/dates";
+import { DatePicker } from "@/components/DatePicker";
 import { findNextClass } from "@/lib/schedule";
 import type { SubjectItem } from "@/types";
 
@@ -29,6 +30,7 @@ export function ItemSheet({
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
   const [dateText, setDateText] = useState("");
+  const [calOpen, setCalOpen] = useState(false);
   const [pickedSubject, setPickedSubject] = useState<string | null>(null);
   const [tried, setTried] = useState(false);
 
@@ -37,6 +39,7 @@ export function ItemSheet({
       setTitle(editing?.title ?? "");
       setDetails(editing?.details ?? "");
       setDateText(editing?.date ? formatShort(editing.date) : "");
+      setCalOpen(false);
       setPickedSubject(subjectId ?? editingSubjectId ?? null);
       setTried(false);
     }
@@ -134,15 +137,39 @@ export function ItemSheet({
           <label htmlFor="item-date" className="block mb-1.5 text-[15px] font-semibold" style={{ color: "var(--ink-2)" }}>
             Дата <span style={{ color: "var(--ink-3)", fontWeight: 400 }}>(если есть)</span>
           </label>
-          <input
-            id="item-date"
-            className="field tnum"
-            placeholder="завтра, пятница, 20.11…"
-            value={dateText}
-            onChange={(e) => setDateText(e.target.value)}
-            inputMode="text"
-            autoComplete="off"
-          />
+          <div className="flex items-center gap-2">
+            <input
+              id="item-date"
+              className="field tnum flex-1"
+              placeholder="завтра, пятница, 20.11…"
+              value={dateText}
+              onChange={(e) => setDateText(e.target.value)}
+              inputMode="text"
+              autoComplete="off"
+            />
+            <button
+              type="button"
+              aria-label="Выбрать дату в календаре"
+              onClick={() => setCalOpen((v) => !v)}
+              className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-2xl cursor-pointer transition-transform active:scale-95"
+              style={{
+                background: calOpen ? "var(--accent)" : "var(--surface-2)",
+                color: calOpen ? "var(--on-accent)" : "var(--accent)",
+              }}
+            >
+              <CalendarDays size={22} />
+            </button>
+          </div>
+          {calOpen && (
+            <div className="mt-2.5">
+              <DatePicker
+                onPick={(iso) => {
+                  setDateText(formatShort(iso));
+                  setCalOpen(false);
+                }}
+              />
+            </div>
+          )}
           <div className="flex flex-wrap gap-2 mt-2.5">
             {["завтра", "послезавтра", "суббота"].map((w) => (
               <button key={w} type="button" className="chip tnum" onClick={() => setDateText(w)}>

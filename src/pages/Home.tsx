@@ -1,8 +1,9 @@
-// Главная: сводка недели и ближайшие даты (7 дней от сегодня). Всё остальное — во вкладке «Дедлайны».
+// Главная: сводка и ближайшие даты — с сегодня до конца следующей календарной недели.
+// Просроченные (дата раньше сегодня) — отдельным блоком. Всё остальное — во вкладке «Дедлайны».
 import { CalendarClock } from "lucide-react";
 import { useAppData, datedEntries, totals } from "@/lib/store";
 import { daysUntil, relLabel, formatLong, todayISO, plural, addDays } from "@/lib/dates";
-import { classesForDate } from "@/lib/schedule";
+import { classesForDate, mondayOf } from "@/lib/schedule";
 import { DateBadge, SubjectDot } from "@/components/Bits";
 import { Backup } from "@/components/Backup";
 
@@ -26,18 +27,21 @@ export function Home({ onOpenSubject }: { onOpenSubject: (id: string) => void })
     }
   }
 
-  // Дела этой недели: невыполненные, дата в ближайшие 7 дней (просроченные тоже считаем)
-  const week = datedEntries(d).filter((e) => !e.item.done && daysUntil(e.item.date!) <= 7);
-  const weekOverdue = week.filter((e) => daysUntil(e.item.date!) < 0).length;
+  // Конец следующей календарной недели (воскресенье): понедельник этой недели + 13 дней
+  const today = todayISO();
+  const endOfNextWeek = addDays(mondayOf(today), 13);
 
-  // Ближайшие невыполненные даты: только ближайшие 7 дней от сегодня (скользящая неделя), до 5 штук.
-  // Даты подальше — во вкладке «Дедлайны».
-  const upcoming = datedEntries(d)
-    .filter((e) => !e.item.done && daysUntil(e.item.date!) >= 0 && daysUntil(e.item.date!) <= 7)
-    .slice(0, 7);
+  // Дела периода: невыполненные, дата от сегодня до конца следующей календарной недели
+  // (просроченные сюда не входят — они отдельным блоком ниже)
+  const period = datedEntries(d).filter(
+    (e) => !e.item.done && e.item.date! >= today && e.item.date! <= endOfNextWeek
+  );
 
-  // Просроченные (дата прошла, а не сделано)
-  const overdue = datedEntries(d).filter((e) => !e.item.done && daysUntil(e.item.date!) < 0);
+  // Ближайшие невыполненные даты периода (с сегодня по конец следующей недели)
+  const upcoming = period;
+
+  // Просроченные: дата раньше сегодняшнего дня, не сделано (любые старые, без ограничения)
+  const overdue = datedEntries(d).filter((e) => !e.item.done && e.item.date! < today);
 
   return (
     <div className="screen-enter">
@@ -47,18 +51,18 @@ export function Home({ onOpenSubject }: { onOpenSubject: (id: string) => void })
           {formatLong(todayISO())}
         </p>
         <h1 className="mt-1 text-[32px] font-bold leading-tight tracking-tight" style={{ color: "var(--ink)" }}>
-          {week.length === 0 ? "Дат на этой неделе нет" : (
+          {period.length === 0 && overdue.length === 0 ? "Ближайших дат нет" : (
             <>
-              На этой неделе: <span className="tnum">{week.length}</span>{" "}
-              {plural(week.length, "дело", "дела", "дел")}
+              Ближайшие две недели: <span className="tnum">{period.length}</span>{" "}
+              {plural(period.length, "дело", "дела", "дел")}
             </>
           )}
         </h1>
-        {weekOverdue > 0 ? (
+        {overdue.length > 0 ? (
           <p className="mt-1 text-[15px] tnum" style={{ color: "var(--danger)" }}>
-            из них просрочено: {weekOverdue}
+            просрочено: {overdue.length}
           </p>
-        ) : week.length === 0 && t.left > 0 ? (
+        ) : period.length === 0 && t.left > 0 ? (
           <p className="mt-1 text-[15px]" style={{ color: "var(--ink-3)" }}>
             но есть дела без дат — загляните в Дедлайны
           </p>
@@ -133,7 +137,7 @@ export function Home({ onOpenSubject }: { onOpenSubject: (id: string) => void })
             <div className="card px-5 py-6 flex items-center gap-3">
               <CalendarClock size={22} style={{ color: "var(--ink-3)" }} />
               <p className="text-[15px]" style={{ color: "var(--ink-3)" }}>
-                На ближайшую неделю ничего нет — даты подальше смотрите во вкладке «Дедлайны»
+                На ближайшие две недели ничего нет — даты подальше смотрите во вкладке «Дедлайны»
               </p>
             </div>
           ) : (

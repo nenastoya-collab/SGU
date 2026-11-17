@@ -137,12 +137,22 @@ export function findNextClass(
   d: AppData,
   subjectQuery: string,
   fromISOdate: string,
-  withinDays = 21
+  withinDays = 21,
+  nowMinutes?: number // текущее время в минутах от полуночи — для «сегодня»
 ): { date: string; cls: ClassOnDate } | null {
   const q = subjectQuery.toLowerCase();
   for (let i = 0; i <= withinDays; i++) {
     const iso = addDaysISO(fromISOdate, i);
-    const hit = classesForDate(d, iso).find((c) => c.subject.toLowerCase().includes(q) || q.includes(c.subject.toLowerCase()));
+    const hit = classesForDate(d, iso).find((c) => {
+      if (!(c.subject.toLowerCase().includes(q) || q.includes(c.subject.toLowerCase()))) return false;
+      // Сегодняшняя пара, которая уже идёт или закончилась, — не «следующая».
+      // Для заданий «к паре» берём только ту, что ещё не началась.
+      if (i === 0 && nowMinutes !== undefined) {
+        const [h, m] = c.start.split(":").map(Number);
+        if (h * 60 + m <= nowMinutes) return false;
+      }
+      return true;
+    });
     if (hit) return { date: iso, cls: hit };
   }
   return null;
