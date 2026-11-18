@@ -11,8 +11,14 @@ export function Home({ onOpenSubject }: { onOpenSubject: (id: string) => void })
   const d = useAppData();
   const t = totals(d);
 
-  // Пары сегодня, а если их нет — ближайший день с парами
-  const todayClasses = classesForDate(d, todayISO());
+  // Пары сегодня, а если их нет (или все уже начались/прошли) — ближайший день с парами.
+  // Пара считается актуальной, пока не началась: как только время старта наступило — смотрим дальше.
+  const nowMin = (() => { const n = new Date(); return n.getHours() * 60 + n.getMinutes(); })();
+  const notStarted = (c: { start: string }) => {
+    const [h, m] = c.start.split(":").map(Number);
+    return h * 60 + m > nowMin;
+  };
+  const todayClasses = classesForDate(d, todayISO()).filter(notStarted);
   let classesDay: { label: string; date: string; list: typeof todayClasses } | null = null;
   if (todayClasses.length > 0) {
     classesDay = { label: "Пары сегодня", date: todayISO(), list: todayClasses };
