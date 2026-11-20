@@ -1,5 +1,6 @@
 // Мини-календарь на месяц для выбора даты: видно дни недели,
 // месяц и год подставляются текущие, листать можно стрелками.
+// Можно подсветить особые дни (например, дни пар выбранного предмета).
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { fromISO, toISO, todayISO } from "@/lib/dates";
@@ -10,7 +11,7 @@ const MONTHS_NOM = [
 ];
 const WD_HEADER = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
 
-export function DatePicker({ onPick }: { onPick: (iso: string) => void }) {
+export function DatePicker({ onPick, highlight }: { onPick: (iso: string) => void; highlight?: Set<string> }) {
   const now = useMemo(() => fromISO(todayISO()), []);
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
@@ -64,25 +65,27 @@ export function DatePicker({ onPick }: { onPick: (iso: string) => void }) {
             {w}
           </span>
         ))}
-        {cells.map((iso, i) =>
-          iso === null ? (
-            <span key={`e${i}`} />
-          ) : (
+        {cells.map((iso, i) => {
+          if (iso === null) return <span key={`e${i}`} />;
+          const isToday = iso === today;
+          const isHl = !!highlight?.has(iso);
+          return (
             <button
               key={iso}
               type="button"
               onClick={() => onPick(iso)}
               className="tnum mx-auto flex h-9 w-9 items-center justify-center rounded-full text-[14.5px] cursor-pointer transition-colors"
               style={{
-                color: iso === today ? "var(--on-accent)" : "var(--ink)",
-                background: iso === today ? "var(--accent)" : "transparent",
-                fontWeight: iso === today ? 700 : 400,
+                color: isToday ? "var(--on-accent)" : isHl ? "var(--accent)" : "var(--ink)",
+                background: isToday ? "var(--accent)" : isHl ? "var(--accent-soft, oklch(0.93 0.03 205))" : "transparent",
+                fontWeight: isToday || isHl ? 700 : 400,
+                boxShadow: isHl && !isToday ? "inset 0 0 0 1.5px var(--accent)" : undefined,
               }}
             >
               {fromISO(iso).getDate()}
             </button>
-          )
-        )}
+          );
+        })}
       </div>
     </div>
   );

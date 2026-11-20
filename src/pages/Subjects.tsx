@@ -4,7 +4,8 @@ import { BookOpen, ChevronRight, Plus } from "lucide-react";
 import { useAppData } from "@/lib/store";
 import { ProgressBar, SubjectDot, Empty } from "@/components/Bits";
 import { SubjectSheet } from "@/components/SubjectSheet";
-import { plural } from "@/lib/dates";
+import { plural, formatShort } from "@/lib/dates";
+import { subjectEndDate } from "@/lib/schedule";
 
 export function Subjects({ onOpenSubject }: { onOpenSubject: (id: string) => void }) {
   const d = useAppData();
@@ -47,6 +48,7 @@ export function Subjects({ onOpenSubject }: { onOpenSubject: (id: string) => voi
             {d.subjects.map((s) => {
               const done = s.items.filter((i) => i.done).length;
               const all = s.items.length;
+              const endDate = subjectEndDate(d, s.name);
               return (
                 <button
                   key={s.id}
@@ -61,8 +63,13 @@ export function Subjects({ onOpenSubject }: { onOpenSubject: (id: string) => voi
                         {s.name}
                       </span>
                       {s.teacher && (
-                        <span className="block text-[13px] truncate" style={{ color: "var(--ink-3)" }}>
+                        <span className="block text-[13px] leading-snug" style={{ color: "var(--ink-3)" }}>
                           {s.teacher}
+                        </span>
+                      )}
+                      {endDate && (
+                        <span className="block text-[12px] tnum mt-0.5" style={{ color: "var(--ink-3)" }}>
+                          до {formatShort(endDate)}
                         </span>
                       )}
                     </span>

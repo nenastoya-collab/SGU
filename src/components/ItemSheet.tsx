@@ -6,7 +6,8 @@ import { Sheet } from "./Bits";
 import { addItem, updateItem, deleteItem, useAppData } from "@/lib/store";
 import { parseRuDate, formatShort, todayISO } from "@/lib/dates";
 import { DatePicker } from "@/components/DatePicker";
-import { findNextClass } from "@/lib/schedule";
+import { findNextClass, classesForDate } from "@/lib/schedule";
+import { addDays } from "@/lib/dates";
 import type { SubjectItem } from "@/types";
 
 export function ItemSheet({
@@ -68,6 +69,20 @@ export function ItemSheet({
     [d, targetSubjectName]
   );
 
+  // Дни, когда у выбранного предмета есть пары (для подсветки в календаре) — на полгода вперёд
+  const subjectDays = useMemo(() => {
+    if (!targetSubjectName) return undefined;
+    const set = new Set<string>();
+    const q = targetSubjectName.toLowerCase();
+    for (let i = 0; i < 183; i++) {
+      const iso = addDays(todayISO(), i);
+      if (classesForDate(d, iso).some((c) => c.subject.toLowerCase().includes(q) || q.includes(c.subject.toLowerCase()))) {
+        set.add(iso);
+      }
+    }
+    return set;
+  }, [d, targetSubjectName]);
+
   const save = () => {
     setTried(true);
     if (!canSave || !targetSubject) return;
@@ -119,12 +134,13 @@ export function ItemSheet({
           <label htmlFor="item-title" className="block mb-1.5 text-[15px] font-semibold" style={{ color: "var(--ink-2)" }}>
             Что нужно сделать
           </label>
-          <input
+          <textarea
             id="item-title"
-            className="field"
+            className="field min-h-[64px] resize-y"
             placeholder="Доклад, тест, экзамен…"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+            rows={2}
           />
           {tried && !titleOk && (
             <p className="mt-1 text-sm" style={{ color: "var(--danger)" }}>
@@ -163,6 +179,7 @@ export function ItemSheet({
           {calOpen && (
             <div className="mt-2.5">
               <DatePicker
+                highlight={subjectDays}
                 onPick={(iso) => {
                   setDateText(formatShort(iso));
                   setCalOpen(false);

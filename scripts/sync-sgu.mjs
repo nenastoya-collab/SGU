@@ -122,8 +122,44 @@ const html = await fetch(SGU_URL, {
   headers: { "User-Agent": "Mozilla/5.0 (compatible; study-helper-sync)" },
 }).then((r) => r.text());
 
+// --- Проверка, что сайт не поменял вёрстку ---
+// Если на странице нет знакомых признаков таблицы расписания — робот ничего
+// не понимает: падаем с ошибкой (красный крестик в Actions), а не молчим.
+const PAGE_MARKERS = ["schedule-table__header", "schedule-table__lesson", "schedule-table"];
+const missing = PAGE_MARKERS.filter((m) => !html.includes(m));
+if (missing.length > 0) {
+  console.error("СИГНАЛ ТРЕВОГИ: сайт СГУ поменял вёрстку — не нашёл знакомых элементов:", missing.join(", "));
+  console.error("Робот ничего не менял. Нужно поправить парсер в scripts/sync-sgu.mjs.");
+  process.exit(1);
+}
+
 const pairs = parseSgu(html);
 console.log(`Прочитано с сайта СГУ: ${pairs.length} пар`);
+
+// --- Проверка на незнакомые данные ---
+// Если в расписании встретился предмет или преподаватель, которых нет в наших
+// словарях (SUBJECT_MAP / TEACHER_MAP), — это повод посмотреть глазами.
+// Падаем с красным крестиком и НИЧЕГО не добавляем, пока словари не пополнят.
+const unknownSubjects = [...new Set(
+  pairs
+    .map((p) => {
+      // вернём исходное (нераспознанное) название, если оно не из словаря
+      const known = Object.values(SUBJECT_MAP).includes(p.subject) || Object.keys(SUBJECT_MAP).includes(p.subject);
+      return known ? null : p.subject;
+    })
+    .filter(Boolean)
+)];
+const knownTeachers = new Set([...Object.keys(TEACHER_MAP), ...Object.values(TEACHER_MAP)]);
+const unknownTeachers = [...new Set(
+  pairs.map((p) => p.teacher).filter((t) => t && !knownTeachers.has(t))
+)];
+if (unknownSubjects.length > 0 || unknownTeachers.length > 0) {
+  console.error("СИГНАЛ ТРЕВОГИ: в расписании незнакомые данные — робот не добавляет ничего, пока не проверит человек.");
+  if (unknownSubjects.length) console.error("  Незнакомые предметы:", unknownSubjects.join(", "));
+  if (unknownTeachers.length) console.error("  Незнакомые преподаватели:", unknownTeachers.join(", "));
+  console.error("Добавьте их в SUBJECT_MAP / TEACHER_MAP в scripts/sync-sgu.mjs.");
+  process.exit(1);
+}
 
 const seedPath = fileURLToPath(new URL("../src/lib/seed.ts", import.meta.url));
 let seed = readFileSync(seedPath, "utf8");

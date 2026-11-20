@@ -6,7 +6,8 @@ import { ItemSheet } from "./ItemSheet";
 import { SubjectSheet } from "./SubjectSheet";
 import { ProgressBar, Empty } from "./Bits";
 import { useAppData } from "@/lib/store";
-import { daysUntil } from "@/lib/dates";
+import { daysUntil, formatShort } from "@/lib/dates";
+import { subjectEndDate } from "@/lib/schedule";
 import type { SubjectItem } from "@/types";
 
 const SOON_DAYS = 14; // «ближайшие» = дата в ближайшие две недели или просрочено
@@ -99,14 +100,22 @@ export function SubjectDetail({
               <ChevronLeft size={26} />
             </button>
             <div className="flex-1 min-w-0">
-              <h1 className="text-[22px] font-bold leading-tight truncate" style={{ color: "var(--ink)" }}>
+              <h1 className="text-[22px] font-bold leading-tight" style={{ color: "var(--ink)" }}>
                 {subject.name}
               </h1>
               {(subject.teacher || subject.note) && (
-                <p className="text-[13.5px] leading-snug truncate" style={{ color: "var(--ink-3)" }}>
+                <p className="text-[13.5px] leading-snug" style={{ color: "var(--ink-3)" }}>
                   {[subject.teacher, subject.note].filter(Boolean).join(" · ")}
                 </p>
               )}
+              {(() => {
+                const endDate = subjectEndDate(d, subject.name);
+                return endDate ? (
+                  <p className="text-[12.5px] tnum mt-0.5" style={{ color: "var(--ink-3)" }}>
+                    до {formatShort(endDate)}
+                  </p>
+                ) : null;
+              })()}
             </div>
             <button
               type="button"

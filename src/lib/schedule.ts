@@ -145,11 +145,17 @@ export function findNextClass(
     const iso = addDaysISO(fromISOdate, i);
     const hit = classesForDate(d, iso).find((c) => {
       if (!(c.subject.toLowerCase().includes(q) || q.includes(c.subject.toLowerCase()))) return false;
-      // Сегодняшняя пара, которая уже идёт или закончилась, — не «следующая».
-      // Для заданий «к паре» берём только ту, что ещё не началась.
+      // Правило «ближайшей пары»: как только сегодня НАЧАЛАСЬ первая пара предмета,
+      // все сегодняшние его пары перестают быть «ближайшими» — берём следующий день с парами.
+      // (Сюда nowMinutes передают только для поиска «ближайшей/следующей» пары;
+      //  «сегодняшнюю» ищут без него — тогда сегодняшние пары доступны весь день.)
       if (i === 0 && nowMinutes !== undefined) {
-        const [h, m] = c.start.split(":").map(Number);
-        if (h * 60 + m <= nowMinutes) return false;
+        const startMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+        const todays = classesForDate(d, iso).filter((x) => x.subject.toLowerCase().includes(q) || q.includes(x.subject.toLowerCase()));
+        const firstStart = Math.min(...todays.map((x) => startMin(x.start)));
+        if (firstStart <= nowMinutes) return false; // первая пара уже началась → сегодня ничего не берём
+        // первая ещё не началась → берём самую первую сегодняшнюю
+        return startMin(c.start) === firstStart;
       }
       return true;
     });
@@ -178,6 +184,20 @@ export function classOnWeek(
 
 export function isCancelled(d: AppData, entryId: string, iso: string): boolean {
   return d.cancels.some((c) => c.entryId === entryId && c.date === iso);
+}
+
+/** Период предмета в семестре: дата последней пары из расписания («до 15 дек»).
+ *  Ищем по всем записям расписания с этим названием предмета (с учётом диапазонов from/to). */
+export function subjectEndDate(d: AppData, subjectName: string): string | null {
+  const q = subjectName.toLowerCase();
+  let last: string | null = null;
+  for (const e of d.schedule) {
+    if (!(e.subject.toLowerCase().includes(q) || q.includes(e.subject.toLowerCase()))) continue;
+    // Конкретный конец диапазона важнее; если диапазона нет — предмет «бессрочный», его не учитываем
+    const end = e.to ?? null;
+    if (end && (last === null || end > last)) last = end;
+  }
+  return last;
 }
 
 /** Сдвигает «HH:MM» на mins минут (для относительных переносов «на час позже»). */

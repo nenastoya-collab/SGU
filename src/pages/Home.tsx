@@ -119,7 +119,7 @@ export function Home({ onOpenSubject }: { onOpenSubject: (id: string) => void })
                   className="hairline-b flex w-full items-center gap-3 px-4 py-3.5 text-left cursor-pointer min-h-[56px]"
                 >
                   <SubjectDot name={e.subjectName} />
-                  <span className="flex-1 min-w-0">
+                  <span className="flex-1 min-w-0 break-words">
                     <span className="block text-[16px] leading-snug" style={{ color: "var(--ink)" }}>
                       {e.item.title}
                     </span>
@@ -158,7 +158,7 @@ export function Home({ onOpenSubject }: { onOpenSubject: (id: string) => void })
                     className="hairline-b flex w-full items-center gap-3 px-4 py-3.5 text-left cursor-pointer min-h-[56px]"
                   >
                     <SubjectDot name={e.subjectName} />
-                    <span className="flex-1 min-w-0">
+                    <span className="flex-1 min-w-0 break-words">
                       <span className="block text-[16px] leading-snug" style={{ color: "var(--ink)" }}>
                         {e.item.title}
                       </span>
