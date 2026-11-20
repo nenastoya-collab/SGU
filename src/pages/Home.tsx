@@ -59,8 +59,10 @@ export function Home({ onOpenSubject }: { onOpenSubject: (id: string) => void })
         <h1 className="mt-1 text-[32px] font-bold leading-tight tracking-tight" style={{ color: "var(--ink)" }}>
           {period.length === 0 && overdue.length === 0 ? "Ближайших дат нет" : (
             <>
-              Ближайшие две недели: <span className="tnum">{period.length}</span>{" "}
-              {plural(period.length, "дело", "дела", "дел")}
+              Ближайшие две недели:{" "}
+              <span className="tnum whitespace-nowrap">
+                {period.length} {plural(period.length, "дело", "дела", "дел")}
+              </span>
             </>
           )}
         </h1>

@@ -44,6 +44,11 @@ export function formatShort(iso: string): string {
   return `${WEEKDAYS_SHORT[d.getDay()]}, ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
 }
 
+/** То же, что formatShort, но с годом: «пн, 2 нояб. 2026» — для точных прошедших дат из календаря. */
+export function formatShortYear(iso: string): string {
+  return `${formatShort(iso)} ${fromISO(iso).getFullYear()}`;
+}
+
 export function formatLong(iso: string): string {
   const d = fromISO(iso);
   return `${d.getDate()} ${MONTHS_GEN[d.getMonth()]}`;
@@ -149,7 +154,7 @@ export function parseRuDate(input: string): string | null {
     return toISO(d);
   }
 
-  // 20 ноября / 20 ноя
+  // 20 ноября / 20 ноя / 20 нояб. 2026
   const textual = s.match(/^(\d{1,2})\s+([а-яё]+)\.?(?:\s+(\d{4}))?$/u);
   if (textual && textual[2] in MONTH_MAP) {
     const day = Number(textual[1]);

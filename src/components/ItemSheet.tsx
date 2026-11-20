@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Trash2, CalendarDays } from "lucide-react";
 import { Sheet } from "./Bits";
 import { addItem, updateItem, deleteItem, useAppData } from "@/lib/store";
-import { parseRuDate, formatShort, todayISO } from "@/lib/dates";
+import { parseRuDate, formatShort, formatShortYear, todayISO } from "@/lib/dates";
 import { DatePicker } from "@/components/DatePicker";
 import { findNextClass, classesForDate } from "@/lib/schedule";
 import { addDays } from "@/lib/dates";
@@ -181,7 +181,9 @@ export function ItemSheet({
               <DatePicker
                 highlight={subjectDays}
                 onPick={(iso) => {
-                  setDateText(formatShort(iso));
+                  // День в прошлом — подставляем текст с годом, чтобы дата осталась точной
+                  // (иначе «2 нояб.» без года понимается как ближайшее будущее и уезжает на +1 год).
+                  setDateText(iso < todayISO() ? formatShortYear(iso) : formatShort(iso));
                   setCalOpen(false);
                 }}
               />

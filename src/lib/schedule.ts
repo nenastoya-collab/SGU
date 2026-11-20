@@ -186,8 +186,10 @@ export function isCancelled(d: AppData, entryId: string, iso: string): boolean {
   return d.cancels.some((c) => c.entryId === entryId && c.date === iso);
 }
 
-/** Период предмета в семестре: дата последней пары из расписания («до 15 дек»).
- *  Ищем по всем записям расписания с этим названием предмета (с учётом диапазонов from/to). */
+/** Период предмета в семестре: дата его последней пары по ТЕКУЩЕЙ схеме чётности
+ *  (той, что выбрана переключателем в «Расписании», — d.settings.parityFlip).
+ *  Берём самый поздний конец диапазона «to» среди записей предмета и идём назад,
+ *  пока не найдём реальный день с его парой. */
 export function subjectEndDate(d: AppData, subjectName: string): string | null {
   const q = subjectName.toLowerCase();
   let last: string | null = null;
@@ -196,6 +198,14 @@ export function subjectEndDate(d: AppData, subjectName: string): string | null {
     // Конкретный конец диапазона важнее; если диапазона нет — предмет «бессрочный», его не учитываем
     const end = e.to ?? null;
     if (end && (last === null || end > last)) last = end;
+  }
+  if (last === null) return null;
+  // Идём от конца назад (не дальше года): последний день, когда пара реально стоит в расписании
+  for (let i = 0; i <= 366; i++) {
+    const iso = addDaysISO(last, -i);
+    if (classesForDate(d, iso).some((c) => c.subject.toLowerCase().includes(q) || q.includes(c.subject.toLowerCase()))) {
+      return iso;
+    }
   }
   return last;
 }
