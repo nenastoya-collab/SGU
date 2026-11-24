@@ -13,6 +13,16 @@ import { fileURLToPath } from "node:url";
 
 const SGU_URL = "https://www.sgu.ru/schedule/fps/vo/111";
 
+// Чёрный список: ошибочные пары на сайте СГУ, которые робот НИКОГДА не добавляет.
+// Ключ: день недели | время начала | предмет (наше имя) | конец диапазона.
+// Срабатывает только на точное совпадение — любые другие пары того же
+// преподавателя/предмета (другие дни, время, даты) проходят как обычно.
+const PAIR_BLOCKLIST = new Set([
+  // Субботние пары Захаровой до 28.11.2026 — ошибка на сайте (проверено 21.11.2026).
+  "6|13:50|Английский|2026-11-28",
+  "6|15:35|Английский|2026-11-28",
+]);
+
 // Название предмета с сайта СГУ -> наше короткое имя.
 const SUBJECT_MAP = {
   "Анатомия центральной нервной системы": "Анатомия",
@@ -133,32 +143,37 @@ if (missing.length > 0) {
   process.exit(1);
 }
 
-const pairs = parseSgu(html);
-console.log(`Прочитано с сайта СГУ: ${pairs.length} пар`);
+const allPairs = parseSgu(html);
+console.log(`Прочитано с сайта СГУ: ${allPairs.length} пар`);
 
-// --- Проверка на незнакомые данные ---
-// Если в расписании встретился предмет или преподаватель, которых нет в наших
-// словарях (SUBJECT_MAP / TEACHER_MAP), — это повод посмотреть глазами.
-// Падаем с красным крестиком и НИЧЕГО не добавляем, пока словари не пополнят.
+// --- Пропускаем пары, которые полностью закончились в прошлом ---
+// На сайте СГУ висит и старое расписание (например, сентябрьские пары).
+// Добавлять их в приложение не нужно: людям они не понадобятся.
+const todayISO = new Date().toISOString().slice(0, 10);
+const notPast = allPairs.filter((p) => !p.to || p.to >= todayISO);
+if (notPast.length < allPairs.length) {
+  console.log(`Пропущено пар, закончившихся в прошлом: ${allPairs.length - notPast.length}`);
+}
+
+// --- Чёрный список ошибочных пар с сайта ---
+const pairs = notPast.filter((p) => !PAIR_BLOCKLIST.has(`${p.day}|${p.start}|${p.subject}|${p.to ?? ""}`));
+if (pairs.length < notPast.length) {
+  console.log(`Пропущено пар из чёрного списка (ошибки сайта): ${notPast.length - pairs.length}`);
+}
+
+// --- Незнакомые предметы и преподаватели — НЕ тревога, а нормальная работа ---
+// Робот должен добавлять новое сам, без участия человека. Поэтому незнакомые
+// названия просто берём как есть (словари нужны только для коротких имён).
 const unknownSubjects = [...new Set(
   pairs
     .map((p) => {
-      // вернём исходное (нераспознанное) название, если оно не из словаря
       const known = Object.values(SUBJECT_MAP).includes(p.subject) || Object.keys(SUBJECT_MAP).includes(p.subject);
       return known ? null : p.subject;
     })
     .filter(Boolean)
 )];
-const knownTeachers = new Set([...Object.keys(TEACHER_MAP), ...Object.values(TEACHER_MAP)]);
-const unknownTeachers = [...new Set(
-  pairs.map((p) => p.teacher).filter((t) => t && !knownTeachers.has(t))
-)];
-if (unknownSubjects.length > 0 || unknownTeachers.length > 0) {
-  console.error("СИГНАЛ ТРЕВОГИ: в расписании незнакомые данные — робот не добавляет ничего, пока не проверит человек.");
-  if (unknownSubjects.length) console.error("  Незнакомые предметы:", unknownSubjects.join(", "));
-  if (unknownTeachers.length) console.error("  Незнакомые преподаватели:", unknownTeachers.join(", "));
-  console.error("Добавьте их в SUBJECT_MAP / TEACHER_MAP в scripts/sync-sgu.mjs.");
-  process.exit(1);
+if (unknownSubjects.length > 0) {
+  console.log("Новые предметы (добавлю как есть):", unknownSubjects.join(", "));
 }
 
 const seedPath = fileURLToPath(new URL("../src/lib/seed.ts", import.meta.url));
