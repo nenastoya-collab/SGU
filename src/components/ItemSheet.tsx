@@ -62,12 +62,17 @@ export function ItemSheet({
   const targetSubject = editing ? editingSubjectId : pickedSubject;
   const canSave = titleOk && !dateBad && targetSubject !== null;
 
-  // Чип «к ближайшей паре»: ближайшая будущая пара этого предмета из расписания
-  const targetSubjectName = d.subjects.find((s) => s.id === targetSubject)?.name ?? null;
-  const nearestClass = useMemo(
-    () => (targetSubjectName ? findNextClass(d, targetSubjectName, todayISO()) : null),
-    [d, targetSubjectName]
-  );
+  // Чип «к ближайшей паре»: ближайшая будущая пара этого предмета из расписания.
+// Правило как у голоса: если сегодня первая пара предмета уже началась —
+// ближайшей считается пара в СЛЕДУЮЩИЙ день, а не сегодняшняя.
+// Намеренно БЕЗ useMemo: считаем на каждый рендер, чтобы время было свежим
+// (лист может висеть открытым, пока пара уже началась).
+const targetSubjectName = d.subjects.find((s) => s.id === targetSubject)?.name ?? null;
+const nearestClass = (() => {
+  if (!targetSubjectName) return null;
+  const n = new Date();
+  return findNextClass(d, targetSubjectName, todayISO(), 21, n.getHours() * 60 + n.getMinutes());
+})();
 
   // Дни, когда у выбранного предмета есть пары (для подсветки в календаре) — на полгода вперёд
   const subjectDays = useMemo(() => {
